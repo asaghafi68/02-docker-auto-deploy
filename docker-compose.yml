@@ -1,13 +1,14 @@
+version: "3.8"
+
 services:
   app:
     container_name: docker-auto-deploy
-
-    image: docker-auto-deploy:v1
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
 
     ports:
       - "3000:3000"
 
-    environment:
-      APP_VERSION: "1.0.0"
-
     restart: unless-stopped
+
+    environment:
+      APP_VERSION: ${IMAGE_TAG}

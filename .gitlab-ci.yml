@@ -1,0 +1,62 @@
+stages:
+  - validate
+  - build
+  - push
+  - deploy
+
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  DOCKER_API_VERSION: "1.44"
+
+# -------------------------
+# 1. VALIDATE (Node.js check)
+# -------------------------
+validate:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - cd app
+    - npm ci
+    - node -v
+    - echo "Validation completed"
+
+# -------------------------
+# 2. BUILD IMAGE
+# -------------------------
+build:
+  stage: build
+  image: docker:24
+  script:
+    - docker version
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+# -------------------------
+# 3. PUSH TO REGISTRY
+# -------------------------
+push:
+  stage: push
+  image: docker:24
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+
+# -------------------------
+# 4. DEPLOY WITH DOCKER COMPOSE
+# -------------------------
+deploy:
+  stage: deploy
+  image: docker:24
+  script:
+    # login to registry
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+
+    # export variables for docker-compose
+    - export IMAGE_NAME=$CI_REGISTRY_IMAGE
+    - export IMAGE_TAG=$CI_COMMIT_SHORT_SHA
+
+    # pull latest image
+    - docker pull $IMAGE_NAME:$IMAGE_TAG
+
+    # deploy using compose
+    - IMAGE_NAME=$IMAGE_NAME IMAGE_TAG=$IMAGE_TAG docker-compose up -d
